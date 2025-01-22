@@ -1,0 +1,5 @@
+yfinance
+flask
+flask-cors
+apscheduler
+pytz
