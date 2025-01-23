@@ -5,7 +5,6 @@ from flask_cors import CORS
 from apscheduler.schedulers.background import BackgroundScheduler
 import pytz
 from datetime import datetime
-import concurrent.futures
 
 # Set up logging with timestamps
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -14,12 +13,8 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)  # Enable CORS
 
-# Stock symbols
 symbols = [
-"RELIANCE.NS", 
- "TCS.NS",
-"HDFCBANK.NS",
-"ACC.NS",
+    "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS","ACC.NS",
 "APLAPOLLO.NS",
 "AUBANK.NS",
 "AARTIIND.NS",
@@ -240,6 +235,7 @@ symbols = [
 "WIPRO.NS",
 "YESBANK.NS",
 "ZOMATO.NS"
+  # Add more symbols as needed
 ]
 
 # Timezone setting
@@ -251,43 +247,55 @@ last_updated = None
 
 
 def fetch_stock(symbol):
-    """Fetch stock data for a single symbol to speed up processing."""
+    """Fetch stock data for a single symbol."""
     try:
-        data = yf.download(symbol, period="5d", interval="1m")
+        # Fetch historical data for the last 5 days with daily frequency
+        data = yf.download(symbol, period="5d", interval="1d")
+        
         if data.empty:
             logger.warning(f"No data for {symbol}")
             return symbol, None
-        
-        # Extract closing prices and convert to list
+
+        # Extract closing prices
         closing_prices = data['Close'].dropna()
         
-        # Ensure enough data points exist
+        # Ensure we have at least 2 data points (the last day and the day before)
         if len(closing_prices) < 2:
+            logger.warning(f"Insufficient data for {symbol}")
             return symbol, None
-        
+
+        # Get the most recent and the previous day's closing prices
         previous_close = closing_prices.iloc[-2]
         current_price = closing_prices.iloc[-1]
+
+        # Calculate the percentage change
         percentage_change = ((current_price - previous_close) / previous_close) * 100
 
         # Return as a dictionary with serializable values
         return symbol, {
             "current_price": round(float(current_price), 2),  # Explicitly convert to float
-            "percentage_change": round(float(percentage_change), 2)  # Explicitly convert to float
+            "previous_close": round(float(previous_close), 2),  # Previous day's closing price
+            "percentage_change": round(float(percentage_change), 2)  # Percentage change
         }
+    
     except Exception as e:
         logger.error(f"Error fetching data for {symbol}: {e}")
         return symbol, None
 
 
 def get_sector_data():
-    """Fetch stock data in parallel and store results in cache."""
+    """Fetch stock data one by one and store results in cache."""
     global cached_stock_data, last_updated
     try:
         start_time = datetime.now()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            results = executor.map(fetch_stock, symbols)
 
-        stock_data = {symbol: data for symbol, data in results if data is not None}
+        stock_data = {}
+
+        # Fetch stock data one by one (sequentially)
+        for symbol in symbols:
+            data = fetch_stock(symbol)  # Fetch data for one stock at a time
+            if data[1] is not None:  # If the data is valid
+                stock_data[data[0]] = data[1]
 
         if stock_data:
             cached_stock_data = stock_data
@@ -298,6 +306,7 @@ def get_sector_data():
 
         logger.info(f"Data fetch completed in {(datetime.now() - start_time).seconds} seconds")
         return cached_stock_data
+
     except Exception as e:
         logger.error(f"Error fetching stock data: {e}")
         return {"error": "Error fetching stock data."}
@@ -327,6 +336,7 @@ def get_stock_data():
         "data": {
             symbol: {
                 "current_price": stock_data["current_price"],
+                "previous_close": stock_data["previous_close"],
                 "percentage_change": stock_data["percentage_change"]
             }
             for symbol, stock_data in cached_stock_data.items()
