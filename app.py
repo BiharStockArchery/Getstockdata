@@ -36,7 +36,7 @@ def fetch_stock(symbol):
             logger.warning(f"No data for {symbol}")
             return symbol, None
         
-        # Extract closing prices
+        # Extract closing prices and convert to list
         closing_prices = data['Close'].dropna()
         
         # Ensure enough data points exist
@@ -47,9 +47,10 @@ def fetch_stock(symbol):
         current_price = closing_prices.iloc[-1]
         percentage_change = ((current_price - previous_close) / previous_close) * 100
 
+        # Return as a dictionary with serializable values
         return symbol, {
-            "current_price": round(current_price, 2),
-            "percentage_change": round(percentage_change, 2)
+            "current_price": round(float(current_price), 2),  # Explicitly convert to float
+            "percentage_change": round(float(percentage_change), 2)  # Explicitly convert to float
         }
     except Exception as e:
         logger.error(f"Error fetching data for {symbol}: {e}")
@@ -99,8 +100,15 @@ def get_stock_data():
         logger.warning("Serving empty cache, fetching new data...")
         get_sector_data()  # Fetch new data if cache is empty
 
+    # Convert cached data to a serializable format
     response = {
-        "data": cached_stock_data,
+        "data": {
+            symbol: {
+                "current_price": stock_data["current_price"],
+                "percentage_change": stock_data["percentage_change"]
+            }
+            for symbol, stock_data in cached_stock_data.items()
+        },
         "last_updated": last_updated
     }
     return jsonify(response)
