@@ -5,6 +5,7 @@ from flask_cors import CORS
 from apscheduler.schedulers.background import BackgroundScheduler
 import pytz
 from datetime import datetime
+import time
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -67,16 +68,29 @@ symbols = [
 # Define the timezone (Indian Standard Time)
 IST = pytz.timezone('Asia/Kolkata')
 
+def fetch_data_with_retry():
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            # Fetch 5 days of minute-level data
+            data = yf.download(symbols, period="5d", interval="1m")
+            if not data.empty:
+                return data
+        except Exception as e:
+            logger.error(f"Attempt {attempt + 1} failed: {e}")
+            time.sleep(5)  # wait before retrying
+    return None  # Return None if all attempts fail
+
 def get_sector_data():
     try:
         # Get the current date and time
         now = datetime.now(IST)
 
-        # Fetch 5 days of minute-level data to get the high, low and previous day's close prices
-        data = yf.download(symbols, period="5d", interval="1m")  # 5-day minute-level data
-
-        # Debugging: Print fetched data
-        logger.info("Fetched data:\n %s", data)
+        # Fetch data with retries
+        data = fetch_data_with_retry()
+        if data is None or data.empty:
+            logger.error("No data returned from Yahoo Finance.")
+            return {"error": "No stock data available."}
 
         # Check if the data contains 'Adj Close' or 'Close' for accurate price info
         stock_data = data.get('Adj Close', data.get('Close'))
@@ -88,28 +102,29 @@ def get_sector_data():
         # Prepare the result data dictionary
         result_data = {}
 
-        # Loop through the stock symbols and calculate data for each
         for symbol in symbols:
-            # Get the previous day's closing price (last row in 'Adj Close' or 'Close' column)
-            previous_day_close = stock_data[symbol].iloc[-2]  # Previous day's closing price
+            # Handle missing data more gracefully
+            if symbol not in stock_data.columns:
+                logger.warning("Missing data for symbol %s", symbol)
+                continue
             
-            # Get the current day's last close price (for comparison)
-            current_price = stock_data[symbol].iloc[-1]  # Today's most recent price (last row)
+            try:
+                previous_day_close = stock_data[symbol].iloc[-2]
+                current_price = stock_data[symbol].iloc[-1]
+                percentage_change = ((current_price - previous_day_close) / previous_day_close) * 100
 
-            # Calculate the percentage change from the previous day's close price
-            percentage_change = ((current_price - previous_day_close) / previous_day_close) * 100
-
-            # Only include the data if it is not NaN
-            if not (current_price != current_price or previous_day_close != previous_day_close):
-                result_data[symbol] = {
-                    "current_price": current_price,
-                    "percentage_change": percentage_change
-                }
+                if not (current_price != current_price or previous_day_close != previous_day_close):
+                    result_data[symbol] = {
+                        "current_price": current_price,
+                        "percentage_change": percentage_change
+                    }
+            except Exception as e:
+                logger.error("Error processing data for symbol %s: %s", symbol, e)
 
         return result_data
 
     except Exception as e:
-        logger.error("Error: %s", e)
+        logger.error("Error fetching stock data: %s", e)
         return {"error": str(e)}
 
 # Define the background task function
