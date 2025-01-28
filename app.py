@@ -250,7 +250,7 @@ def fetch_stock(symbol):
     """Fetch stock data for a single symbol."""
     try:
         # Fetch historical data for the last 5 days with daily frequency
-        data = yf.download(symbol, period="1d", interval="1d")
+        data = yf.download(symbol, period="5d", interval="1d")
         
         if data.empty:
             logger.warning(f"No data for {symbol}")
@@ -265,8 +265,8 @@ def fetch_stock(symbol):
             return symbol, None
 
         # Get the most recent and the previous day's closing prices
-        previous_close = closing_prices.iloc[-2]
-        current_price = closing_prices.iloc[-1]
+        previous_close = closing_prices.iloc[-1]
+        current_price = closing_prices.iloc[0]
 
         # Calculate the percentage change
         percentage_change = ((current_price - previous_close) / previous_close) * 100
