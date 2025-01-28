@@ -250,7 +250,7 @@ def fetch_stock(symbol):
     """Fetch stock data for a single symbol."""
     try:
         # Fetch historical data for the last 5 days with daily frequency
-        data = yf.download(symbol, period="5d", interval="1d")
+        data = yf.download(symbol, period="1wk", interval="1d")
         
         if data.empty:
             logger.warning(f"No data for {symbol}")
