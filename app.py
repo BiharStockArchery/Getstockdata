@@ -265,7 +265,7 @@ def fetch_stock(symbol):
             return symbol, None
 
         # Get the most recent and the previous day's closing prices
-        previous_close = closing_prices.iloc[-2]
+        previous_close = closing_prices.iloc[-3]
         current_price = closing_prices.iloc[-1]
 
         # Calculate the percentage change
