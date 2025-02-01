@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # Enable CORS for a specific origin
-CORS(app, resources={r"/get_stock_data": {"origins": "https://gleaming-lokum-2106f6.netlify.app"}})
+CORS(app, resources={r"/get_stock_data": {"origins": "https://gleaming-lokum-2106f6.netlify.app/heat"}})
 
 symbols = [
     "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ACC.NS",
