@@ -11,7 +11,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS
+
+# Enable CORS for a specific origin
+CORS(app, resources={r"/get_stock_data": {"origins": "https://gleaming-lokum-2106f6.netlify.app"}})
 
 symbols = [
     "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ACC.NS",
@@ -41,36 +43,17 @@ symbols = [
     "HINDPETRO.NS", "HINDUNILVR.NS", "HUDCO.NS", "ICICIBANK.NS",
     "ICICIGI.NS", "ICICIPRULI.NS", "IDFCFIRSTB.NS", "IPCALAB.NS",
     "IRB.NS", "ITC.NS", "INDIAMART.NS", "INDIANB.NS",
-    "IEX.NS", "IOC.NS", "IRCTC.NS", "IRFC.NS",
-    "IGL.NS", "INDUSTOWER.NS", "INDUSINDBK.NS", "NAUKRI.NS",
-    "INFY.NS", "INDIGO.NS", "JKCEMENT.NS", "JSWENERGY.NS",
-    "JSWSTEEL.NS", "JSL.NS", "JINDALSTEL.NS", "JIOFIN.NS",
-    "JUBLFOOD.NS", "KEI.NS", "KPITTECH.NS", "KALYANKJIL.NS",
-    "KOTAKBANK.NS", "LTF.NS", "LTTS.NS", "LICHSGFIN.NS",
-    "LTIM.NS", "LT.NS", "LAURUSLABS.NS", "LICI.NS",
-    "LUPIN.NS", "MRF.NS", "LODHA.NS", "MGL.NS",
-    "M&MFIN.NS", "M&M.NS", "MANAPPURAM.NS", "MARICO.NS",
-    "MARUTI.NS", "MFSL.NS", "MAXHEALTH.NS", "METROPOLIS.NS",
-    "MPHASIS.NS", "MCX.NS", "MUTHOOTFIN.NS", "NCC.NS",
-    "NHPC.NS", "NMDC.NS", "NTPC.NS", "NATIONALUM.NS",
-    "NAVINFLUOR.NS", "NESTLEIND.NS", "OBEROIRLTY.NS", "ONGC.NS",
-    "OIL.NS", "PAYTM.NS", "OFSS.NS", "POLICYBZR.NS",
-    "PIIND.NS", "PVRINOX.NS", "PAGEIND.NS", "PERSISTENT.NS",
-    "PETRONET.NS", "PIDILITIND.NS", "PEL.NS", "POLYCAB.NS",
-    "POONAWALLA.NS", "PFC.NS", "POWERGRID.NS", "PRESTIGE.NS",
-    "PNB.NS", "RBLBANK.NS", "RECLTD.NS", "RELIANCE.NS",
-    "SBICARD.NS", "SBILIFE.NS", "SHREECEM.NS", "SJVN.NS",
-    "SRF.NS", "MOTHERSON.NS", "SHRIRAMFIN.NS", "SIEMENS.NS",
-    "SONACOMS.NS", "SBIN.NS", "SAIL.NS", "SUNPHARMA.NS",
-    "SUNTV.NS", "SUPREMEIND.NS", "SYNGENE.NS", "TATACONSUM.NS",
-    "TVSMOTOR.NS", "TATACHEM.NS", "TATACOMM.NS", "TCS.NS",
-    "TATAELXSI.NS", "TATAMOTORS.NS", "TATAPOWER.NS", "TATASTEEL.NS",
-    "TECHM.NS", "FEDERALBNK.NS", "INDHOTEL.NS", "RAMCOCEM.NS",
-    "TITAN.NS", "TORNTPHARM.NS", "TRENT.NS", "TIINDIA.NS",
-    "UPL.NS", "ULTRACEMCO.NS", "UNIONBANK.NS", "UBL.NS",
-    "UNITDSPR.NS", "VBL.NS", "VEDL.NS", "IDEA.NS",
-    "VOLTAS.NS", "WIPRO.NS", "YESBANK.NS", "ZOMATO.NS"
-    # Add more symbols as needed
+    "IEX.NS", "IOC.NS", "IRCTC.NS", "JINDALSTEL.NS", "JSWSTEEL.NS", "JUBLFOOD.NS", "KOTAKBANK.NS",
+    "L&T.NS", "LICHSGFIN.NS", "LTIMINDRA.NS", "M&M.NS",
+    "MINDTREE.NS", "MOTHERSON.NS", "MPHASIS.NS", "MRF.NS",
+    "MUTHOOTFIN.NS", "NATIONALUM.NS", "NESTLEIND.NS", "NMDC.NS",
+    "NTPC.NS", "OIL.NS", "PAGEIND.NS", "PERSISTENT.NS",
+    "PHILIPCARB.NS", "PIDILITIND.NS", "PNB.NS", "POLYCAB.NS",
+    "POWERGRID.NS", "RECLTD.NS", "SBILIFE.NS", "SBIN.NS",
+    "SHREECEM.NS", "SIEMENS.NS", "SRF.NS", "SUNPHARMA.NS",
+    "TATAMOTORS.NS", "TATAPOWER.NS", "TATASTEEL.NS", "TECHM.NS",
+    "TITAN.NS", "TORNTPOWER.NS", "ULTRACEMCO.NS", "UPL.NS",
+    "WIPRO.NS", "ZOMATO.NS"
 ]
 
 # Timezone setting
@@ -79,7 +62,6 @@ IST = pytz.timezone('Asia/Kolkata')
 # In-memory cache to store stock data
 cached_stock_data = {}
 last_updated = None
-
 
 def fetch_stock(symbol):
     """Fetch stock data for a single symbol."""
@@ -117,7 +99,6 @@ def fetch_stock(symbol):
         logger.error(f"Error fetching data for {symbol}: {e}")
         return symbol, None
 
-
 def get_sector_data():
     """Fetch stock data one by one and store results in cache."""
     global cached_stock_data, last_updated
@@ -146,30 +127,25 @@ def get_sector_data():
         logger.error(f"Error fetching stock data: {e}")
         return {"error": "Error fetching stock data."}
 
-
 def update_data():
     """Background job to update stock data periodically."""
     logger.info("Updating stock data...")
     get_sector_data()
-
 
 # Schedule periodic data updates every 2 minutes
 scheduler = BackgroundScheduler(timezone=IST)
 scheduler.add_job(update_data, 'interval', minutes=2)
 scheduler.start()
 
-
 @app.route('/get_stock_data', methods=['GET'])
 def get_stock_data():
     """API endpoint to return cached stock data."""
     return jsonify(cached_stock_data)
 
-
 @app.route('/get_last_updated', methods=['GET'])
 def get_last_updated():
     """API endpoint to return the last updated timestamp."""
     return jsonify({"last_updated": last_updated})
-
 
 if __name__ == '__main__':
     app.run(debug=True)  # Run the Flask app in debug mode
