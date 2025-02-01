@@ -135,11 +135,7 @@ def update_data():
 # Schedule periodic data updates every 2 minutes
 scheduler = BackgroundScheduler(timezone=IST)
 scheduler.add_job(update_data, 'interval', minutes=2)
-scheduler.start ```python
-())
-
-# Fetch stock data immediately upon startup
-get_sector_data()
+scheduler.start()
 
 @app.route('/get_stock_data', methods=['GET'])
 def get_stock_data():
