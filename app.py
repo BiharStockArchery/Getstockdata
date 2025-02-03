@@ -94,7 +94,7 @@ def update_stock_data():
 
 # Schedule periodic updates
 scheduler = BackgroundScheduler()
-scheduler.add_job(update_stock_data, 'interval', minutes=5, timezone=IST)
+scheduler.add_job(update_stock_data, 'interval', seconds=30, timezone=IST)
 scheduler.start()
 
 @app.route('/get_stock_data', methods=['GET'])
