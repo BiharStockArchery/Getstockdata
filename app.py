@@ -4,7 +4,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from apscheduler.schedulers.background import BackgroundScheduler
 import pytz
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # Set up logging with timestamps
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -57,24 +57,7 @@ def fetch_stock(symbol):
             logger.warning(f"No data for {symbol}")
             return symbol, None
 
-        # Get the last trading day (excluding weekends)
-        last_trading_day = datetime.now(IST)
-        if last_trading_day.weekday() == 5:  # Saturday
-            last_trading_day -= timedelta(days=1)  # Go to Friday
-        elif last_trading_day.weekday() == 6:  # Sunday
-            last_trading_day -= timedelta(days=2)  # Go to Friday
-        
-        # Get the date in the format of yfinance data (yyyy-mm-dd)
-        last_trading_day_str = last_trading_day.strftime('%Y-%m-%d')
-
-        # Filter the data to get the last trading day's closing price
-        filtered_data = data[data.index.strftime('%Y-%m-%d') == last_trading_day_str]
-        
-        if filtered_data.empty:
-            logger.warning(f"No trading data available for {symbol} on {last_trading_day_str}")
-            return symbol, None
-        
-        closing_prices = filtered_data['Close'].dropna()
+        closing_prices = data['Close'].dropna()
         
         if len(closing_prices) < 2:
             logger.warning(f"Insufficient data for {symbol}")
@@ -111,7 +94,7 @@ def update_stock_data():
 
 # Schedule periodic updates
 scheduler = BackgroundScheduler()
-scheduler.add_job(update_stock_data, 'interval', minutes=1, timezone=IST)
+scheduler.add_job(update_stock_data, 'interval', minutes=5, timezone=IST)
 scheduler.start()
 
 @app.route('/get_stock_data', methods=['GET'])
@@ -121,11 +104,11 @@ def get_stock_data():
         "stocks": cached_stock_data,
         "last_updated": last_updated
     })
-    response.headers.add("Access-Control-Allow-Origin", "*")
+    # This header allows the response to be accessed by your frontend
+    response.headers.add("Access-Control-Allow-Origin", "*")  # Allows all origins, but can be restricted
     response.headers.add("Access-Control-Allow-Methods", "GET, OPTIONS")
     return response
 
 if __name__ == '__main__':
     update_stock_data()  # Initial data fetch
-    app.run(host='0.0.0.0', port=5000, debug=True)
-
+    app.run(host='0.0.0.0', port=5000, debug=True)   
